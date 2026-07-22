@@ -1,0 +1,53 @@
+{
+  "total_reviews": 19982,
+  "positive_count": 18782,
+  "neutral_count": 634,
+  "negative_count": 566,
+  "aspect_labels": [
+    "Delivery & Service",
+    "Others",
+    "Packaging Quality",
+    "Product Quality"
+  ],
+  "aspect_positive": [
+    6743,
+    3349,
+    751,
+    7939
+  ],
+  "aspect_neutral": [
+    154,
+    188,
+    23,
+    269
+  ],
+  "aspect_negative": [
+    177,
+    177,
+    23,
+    189
+  ],
+  "model_comparison": {
+    "Naive Bayes": {
+      "accuracy": 81.69,
+      "precision": 93.61,
+      "recall": 81.69,
+      "f1_score": 86.53,
+      "support": 3997
+    },
+    "Support Vector Machine": {
+      "accuracy": 92.34,
+      "precision": 92.53,
+      "recall": 92.34,
+      "f1_score": 92.44,
+      "support": 3997
+    },
+    "Logistic Regression": {
+      "accuracy": 85.86,
+      "precision": 93.7,
+      "recall": 85.86,
+      "f1_score": 89.14,
+      "support": 3997
+    }
+  }
+}

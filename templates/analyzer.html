@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentiment Analyzer - ABSA</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+</head>
+<body>
+  <nav class="navbar">
+    <div class="brand">ABSA<span>.</span></div>
+    <div class="navlinks">
+      <a href="/">Home</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/analyzer" class="active">Sentiment Analyzer</a>
+    </div>
+  </nav>
+
+  <div class="analyzer-wrap">
+    <div class="dash-header">
+      <h2>Sentiment Analyzer</h2>
+      <p>Run a single-phrase classification or run predictions on batch datasets.</p>
+    </div>
+
+    <div class="tabs">
+      <div class="tab-btn active" data-tab="single">📝 Single Review Prediction</div>
+      <div class="tab-btn" data-tab="batch">📁 Upload Analysis System</div>
+    </div>
+
+    <!-- SINGLE REVIEW -->
+    <div class="tab-panel active" id="tab-single">
+      <div class="panel">
+        <h3>Manual Single Sentiment</h3>
+        <label class="field-label">Enter any sentence</label>
+        <input type="text" id="singleInput" placeholder="e.g. The product quality is amazing but delivery was slow" />
+        <div style="margin-top:14px; display:flex; gap:10px;">
+          <button class="btn" id="analyzeSingleBtn">Analyze Review</button>
+        </div>
+        <div id="singleError"></div>
+        <div id="singleResults" style="display:none; margin-top:20px;"></div>
+      </div>
+    </div>
+
+    <!-- BATCH UPLOAD -->
+    <div class="tab-panel" id="tab-batch">
+      <div class="panel">
+        <h3>Upload File</h3>
+        <p style="color:var(--text-dim); font-size:0.85rem; margin-top:-8px;">
+          Supported formats: .csv, .xlsx, .xls &mdash; must contain a review text column (e.g. "comment").
+        </p>
+        <div class="upload-zone" id="dropZone">
+          <div class="icon">⬆️</div>
+          <div id="dropZoneText">Click to choose a file or drag it here</div>
+          <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none;">
+        </div>
+        <div style="margin-top:14px;">
+          <button class="btn" id="analyzeBatchBtn">Analyze Reviews</button>
+        </div>
+        <div id="batchError"></div>
+        <div id="batchSuccess"></div>
+
+        <div id="batchResults" style="display:none;">
+          <h3 style="margin-top:28px;">Data Visualization</h3>
+          <div class="chart-grid">
+            <div class="panel">
+              <h4 style="margin:0 0 12px; color:var(--text-dim); font-size:0.85rem; text-transform:uppercase;">Sentiment Distribution by Aspect</h4>
+              <canvas id="batchBarChart" height="180"></canvas>
+            </div>
+            <div class="panel">
+              <h4 style="margin:0 0 12px; color:var(--text-dim); font-size:0.85rem; text-transform:uppercase;">Percentage Split</h4>
+              <canvas id="batchDonutChart" height="180"></canvas>
+            </div>
+          </div>
+
+          <h3 style="margin-top:24px;">Data Sample Output Preview</h3>
+          <div class="summary-table-wrap">
+            <table class="summary-table" id="previewTable"></table>
+          </div>
+
+          <a class="btn download-btn" id="downloadBtn" href="/api/download-result">⬇ Download Result (CSV)</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---- Tabs ----
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ---- Single Review Prediction ----
+    document.getElementById('analyzeSingleBtn').addEventListener('click', async () => {
+      const input = document.getElementById('singleInput');
+      const text = input.value.trim();
+      const errBox = document.getElementById('singleError');
+      const resultsBox = document.getElementById('singleResults');
+      errBox.innerHTML = '';
+
+      if (!text) {
+        errBox.innerHTML = '<div class="alert error">Please enter a review sentence.</div>';
+        return;
+      }
+
+      const btn = document.getElementById('analyzeSingleBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Analyzing...';
+
+      try {
+        const res = await fetch('/api/predict-single', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errBox.innerHTML = `<div class="alert error">${data.error}</div>`;
+          resultsBox.style.display = 'none';
+        } else {
+          renderSingleResults(data.results);
+          resultsBox.style.display = 'block';
+        }
+      } catch (e) {
+        errBox.innerHTML = '<div class="alert error">Something went wrong. Please try again.</div>';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Analyze Review';
+      }
+    });
+
+    function renderSingleResults(results) {
+      const box = document.getElementById('singleResults');
+      const count = results.length;
+
+      const heading = count > 1
+        ? `<p style="color:var(--text-dim); font-size:0.85rem; margin:0 0 12px;">Detected ${count} aspects in this review:</p>`
+        : '';
+
+      const cards = results.map(r => `
+        <div class="result-row" style="margin-top:${count > 1 ? '10px' : '0'};">
+          <div class="result-box aspect">
+            <span class="lbl">Extracted Aspect</span>
+            <span>${r.aspect}</span>
+          </div>
+          <div class="result-box sentiment ${r.sentiment}">
+            <span class="lbl">Predicted Sentiment</span>
+            <span>${r.sentiment} Class</span>
+          </div>
+        </div>
+      `).join('');
+
+      box.innerHTML = heading + cards;
+    }
+
+    // ---- Batch Upload ----
+    let selectedFile = null;
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) {
+        selectedFile = fileInput.files[0];
+        document.getElementById('dropZoneText').textContent = selectedFile.name;
+      }
+    });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#ff5a4e'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = '';
+      if (e.dataTransfer.files.length) {
+        selectedFile = e.dataTransfer.files[0];
+        document.getElementById('dropZoneText').textContent = selectedFile.name;
+      }
+    });
+
+    let batchBarChartInstance = null;
+    let batchDonutChartInstance = null;
+
+    document.getElementById('analyzeBatchBtn').addEventListener('click', async () => {
+      const errBox = document.getElementById('batchError');
+      const successBox = document.getElementById('batchSuccess');
+      errBox.innerHTML = '';
+      successBox.innerHTML = '';
+
+      if (!selectedFile) {
+        errBox.innerHTML = '<div class="alert error">Please choose a review file to upload.</div>';
+        return;
+      }
+
+      const btn = document.getElementById('analyzeBatchBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Analyzing...';
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        const res = await fetch('/api/predict-batch', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!res.ok) {
+          errBox.innerHTML = `<div class="alert error">${data.error}</div>`;
+          document.getElementById('batchResults').style.display = 'none';
+        } else {
+          successBox.innerHTML = '<div class="alert success">Analyze Successfully! ' + data.total_reviews + ' reviews processed.</div>';
+          renderBatchResults(data);
+          document.getElementById('batchResults').style.display = 'block';
+        }
+      } catch (e) {
+        errBox.innerHTML = '<div class="alert error">Something went wrong. Please try again.</div>';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Analyze Reviews';
+      }
+    });
+
+    function renderBatchResults(data) {
+      Chart.defaults.color = '#8b95ab';
+      Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+
+      if (batchBarChartInstance) batchBarChartInstance.destroy();
+      if (batchDonutChartInstance) batchDonutChartInstance.destroy();
+
+      batchBarChartInstance = new Chart(document.getElementById('batchBarChart'), {
+        type: 'bar',
+        data: {
+          labels: data.aspect_labels,
+          datasets: [
+            { label: 'Positive', data: data.aspect_positive, backgroundColor: '#35d68a' },
+            { label: 'Neutral', data: data.aspect_neutral, backgroundColor: '#ffcc4d' },
+            { label: 'Negative', data: data.aspect_negative, backgroundColor: '#ff5a6a' },
+          ]
+        },
+        options: {
+          plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
+          scales: { x: { grid: { display: false } }, y: { grid: { color: '#2a3348' } } }
+        }
+      });
+
+      batchDonutChartInstance = new Chart(document.getElementById('batchDonutChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Positive', 'Neutral', 'Negative'],
+          datasets: [{
+            data: [data.positive_count, data.neutral_count, data.negative_count],
+            backgroundColor: ['#35d68a', '#ffcc4d', '#ff5a6a'],
+            borderWidth: 0
+          }]
+        },
+        options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }, cutout: '65%' }
+      });
+
+      // preview table
+      const table = document.getElementById('previewTable');
+      if (data.preview.length === 0) { table.innerHTML = ''; return; }
+
+      let html = `
+      <thead>
+      <tr>
+        <th>No</th>
+        <th>Comment</th>
+        <th>Cleaned Text</th>
+        <th>Aspect</th>
+        <th>Sentiment</th>
+      </tr>
+      </thead>
+      <tbody>
+      `;
+
+      data.preview.forEach(row => {
+
+        html += `
+        <tr>
+          <td>${row["No"]}</td>
+          <td>${row["Comment"]}</td>
+          <td>${row["Cleaned Text"]}</td>
+          <td>${row["Aspect"]}</td>
+          <td>
+            <span class="pill ${row["Sentiment"]}">
+                ${row["Sentiment"]}
+            </span>
+        </td>
+    </tr>
+    `;
+
+});
+
+html += "</tbody>";
+      table.innerHTML = html;
+    }
+  </script>
+</body>
+</html>

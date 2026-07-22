@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABSA - E-Commerce Reviews</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="brand">ABSA<span>.</span></div>
+    <div class="navlinks">
+      <a href="/" class="active">Home</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/analyzer">Sentiment Analyzer</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="eyebrow"></div>
+    <h1 style="text-align:center;">
+    Aspect-Based Sentiment Analysis of<br>
+  <span style="color:#ff5c5c;">E-Commerce Reviews</span>
+  </h1>
+    <p>
+      Millions of Shopee reviews are posted every day, 
+      but a simple star rating doesn't tell sellers what customers actually liked or disliked. 
+      This system analyzes customer reviews based on different aspects—Product Quality, Packaging Quality, and Delivery & Service—
+      to help sellers identify strengths, understand customer concerns, and improve their products and services.
+    </p>
+    <a href="/dashboard" class="btn">Go to Dashboard</a>
+    <a href="/analyzer" class="btn secondary">Try the Analyzer</a>
+  </section>
+
+  <div class="aspect-cards">
+    <div class="aspect-card">
+      <span class="tag pq">Product Quality</span>
+      <p>Tracks feedback on quality, durability, and whether the item is genuine and worth its price.</p>
+    </div>
+    <div class="aspect-card">
+      <span class="tag pk">Packaging Quality</span>
+      <p>Flags mentions of bubble wrap, boxes, and seals to spot products that arrived broken or damaged.</p>
+    </div>
+    <div class="aspect-card">
+      <span class="tag ds">Delivery &amp; Service</span>
+      <p>Tracks delivery and service efficiency: shipping delays and how sellers respond to their customers.</p>
+    </div>
+  </div>
+</body>
+</html>

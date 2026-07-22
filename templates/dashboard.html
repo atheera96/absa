@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - ABSA</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="brand">ABSA<span>.</span></div>
+    <div class="navlinks">
+      <a href="/">Home</a>
+      <a href="/dashboard" class="active">Dashboard</a>
+      <a href="/analyzer">Sentiment Analyzer</a>
+    </div>
+  </nav>
+
+  <div class="dash-wrap">
+    <div class="dash-header">
+      <h2>E-Commerce Sentiment Analysis Dashboard</h2>
+      <p>Monitor buyer satisfaction metrics across core operational aspects.</p>
+    </div>
+
+    {% if error %}
+      <div class="alert error">{{ error }}</div>
+    {% else %}
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="label">Total Reviews</div>
+          <div class="value">{{ "{:,}".format(stats.total_reviews) }}</div>
+        </div>
+        <div class="metric-card positive">
+          <div class="label">Positive Sentiment</div>
+          <div class="value">{{ "{:,}".format(stats.positive_count) }}</div>
+        </div>
+        <div class="metric-card neutral">
+          <div class="label">Neutral Sentiment</div>
+          <div class="value">{{ "{:,}".format(stats.neutral_count) }}</div>
+        </div>
+        <div class="metric-card negative">
+          <div class="label">Negative Sentiment</div>
+          <div class="value">{{ "{:,}".format(stats.negative_count) }}</div>
+        </div>
+      </div>
+
+      <div class="chart-grid full">
+        <div class="panel">
+          <h3>Sentiment Volume Across Aspects</h3>
+          <canvas id="lineChart" height="90"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="panel">
+          <h3>Total Counts of Sentiment by Aspect</h3>
+          <canvas id="barChart" height="180"></canvas>
+        </div>
+        <div class="panel">
+          <h3>Percentage Distribution Split</h3>
+          <canvas id="donutChart" height="180"></canvas>
+        </div>
+      </div>
+
+      <script>
+        const aspectLabels = {{ stats.aspect_labels | tojson }};
+        const aspectPositive = {{ stats.aspect_positive | tojson }};
+        const aspectNeutral = {{ stats.aspect_neutral | tojson }};
+        const aspectNegative = {{ stats.aspect_negative | tojson }};
+
+        const positive = {{ stats.positive_count }};
+        const neutral = {{ stats.neutral_count }};
+        const negative = {{ stats.negative_count }};
+
+        Chart.defaults.color = '#8b95ab';
+        Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+
+        Chart.register(ChartDataLabels);
+
+        new Chart(document.getElementById('lineChart'), {
+          type: 'line',
+          data: {
+            labels: aspectLabels,
+            datasets: [
+              { label: 'Positive', data: aspectPositive, borderColor: '#35d68a', backgroundColor: '#35d68a', tension: 0.35 },
+              { label: 'Neutral', data: aspectNeutral, borderColor: '#ffcc4d', backgroundColor: '#ffcc4d', tension: 0.35 },
+              { label: 'Negative', data: aspectNegative, borderColor: '#ff5a6a', backgroundColor: '#ff5a6a', tension: 0.35 },
+            ]
+          },
+          options: {
+            plugins: {
+              legend: { position: 'top', labels: { boxWidth: 12 } },
+              datalabels: { display: false }
+            },
+            scales: {
+              x: { grid: { color: '#2a3348' } },
+              y: { grid: { color: '#2a3348' } }
+            }
+          }
+        });
+
+        new Chart(document.getElementById('barChart'), {
+          type: 'bar',
+          data: {
+            labels: aspectLabels,
+            datasets: [
+              { label: 'Positive', data: aspectPositive, backgroundColor: '#35d68a' },
+              { label: 'Neutral', data: aspectNeutral, backgroundColor: '#ffcc4d' },
+              { label: 'Negative', data: aspectNegative, backgroundColor: '#ff5a6a' },
+            ]
+          },
+          options: {
+            plugins: {
+              legend: { position: 'top', labels: { boxWidth: 12 } },
+              datalabels: { display: false }
+            },
+            scales: {
+              x: { grid: { display: false } },
+              y: { grid: { color: '#2a3348' } }
+            }
+          }
+        });
+
+        new Chart(document.getElementById('donutChart'), {
+          type: 'doughnut',
+          data: {
+            labels: ['Positive', 'Neutral', 'Negative'],
+            datasets: [{
+              data: [positive, neutral, negative],
+              backgroundColor: ['#35d68a', '#ffcc4d', '#ff5a6a'],
+              borderWidth: 0,
+            }]
+          },
+          options: {
+    plugins: {
+        legend: {
+            position: 'bottom',
+            labels: {
+                boxWidth: 12
+            }
+        },
+        datalabels: {
+            color: '#fff',
+            font: {
+                weight: 'bold',
+                size: 14
+            },
+            formatter: (value, context) => {
+
+                const data = context.chart.data.datasets[0].data;
+                const total = data.reduce((a, b) => a + b, 0);
+
+                if (total === 0) return "";
+
+                const percentage = (value / total * 100).toFixed(1);
+
+                return percentage + "%";
+            }
+        }
+    },
+    cutout: '65%'
+}
+          }
+        );
+      </script>
+    {% endif %}
+  </div>
+</body>
+</html>
